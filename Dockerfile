@@ -71,8 +71,10 @@
 
 # CMD ["node", "--env-file=.env", "dist/server.js"]
 
-
+# ──────────────── BUILD STAGE ────────────────
 FROM node:20-slim AS build
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 WORKDIR /app
 
@@ -83,14 +85,14 @@ COPY . .
 RUN npm run build
 
 
-# ----------------------------
-# Stage final
-# ----------------------------
+# ──────────────── FINAL STAGE ────────────────
 FROM node:20-slim
+
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 WORKDIR /app
 
-# Dependências para rodar o Chromium
+# Dependências necessárias pro Chromium funcionar
 RUN apt-get update && apt-get install -y \
   chromium \
   ca-certificates \
@@ -125,10 +127,8 @@ COPY --from=build /app/dist ./dist
 COPY package*.json ./
 RUN npm install --omit=dev
 
-# Variável pra o whatsapp-web.js achar o Chromium
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Caminho para o WhatsApp-Web.js encontrar o Chromium
+ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 
-EXPOSE 3001
-
-CMD ["node", "--env-file=.env", "dist/server.js"]
-
+EXPOSE 3002
+CMD ["node", "dist/server.js"]
