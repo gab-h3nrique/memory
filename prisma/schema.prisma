@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Users {
+  id                String @id @default(cuid())
+
+  name              String
+  email             String @unique
+  password          String
+  role              Int // 100 = adm // 200 = supervisor // 300 teammate
+
+  whatsapps         WhatsAppUser[]
+  
+  createdAt         DateTime? @default(now())
+  updatedAt         DateTime? @updatedAt
+
+  @@map("users")
+}
+
+model Settings {
+  id        Int @id @default(autoincrement())
+
+  name      String //  maxInstallments
+  value     String? //  12x
+  jsonValue Json? //  { 'maxInstallments' : 12, 'minInstallments': 4}
+
+  @@map("settings")
+}
+
+model Fails {
+  id        Int @id @default(autoincrement())
+
+  type      String @default("runtime") // api, docker, git, runtime
+
+  name      String @default("UnknownError") // the error name
+  message   String? // the error message
+  data      Json? // the data object
+  error     Json? // the error object
+  status    String? @default("new") // new, resolved, solved
+
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("fails")
+}
+
+model WhatsAppAccounts {
+  id              String   @id @default(cuid())
+
+  name            String
+  number          String   @unique
+  clientId        String   @unique // usado pelo LocalAuth para separar as sessões
+  status          String   @default("pendingQr") // created, pending_qr, conected, disconnected
+  webhookUrl      String?
+
+  users           WhatsAppUser[]
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("whatsAppAccounts")
+}
+
+model WhatsAppUser {
+
+  id                Int @id @default(autoincrement())
+  role              Int @default(300) // 100 = adm // 200 = supervisor // 300 teammate
+  
+  user              Users @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  whatsappAccount   WhatsAppAccounts @relation(fields: [whatsappAccountId], references: [id], onDelete: Cascade)
+  whatsappAccountId String
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, whatsappAccountId]) // forbid duplicate entries
+  @@map("whatsAppUser")
+}

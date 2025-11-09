@@ -1,0 +1,23 @@
+
+services:
+
+  socket:
+    build: "./"
+    container_name: memory
+    restart: always
+    volumes:
+      - .:/src
+    ports:
+     - "3002:3002"
+
+  # nginx:
+  #   image: nginx:latest
+  #   container_name: pulsar-nginx
+  #   restart: always
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/conf.d:/etc/nginx/conf.d
+  #   depends_on:
+  #     - socket

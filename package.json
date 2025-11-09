@@ -1,0 +1,35 @@
+{
+  "name": "memory",
+  "version": "1.0.0",
+  "main": "dist/server.js",
+  "description": "",
+  "license": "ISC",
+  "author": "Garren",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "whatsapp-web.js": "^1.34.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "@types/node": "^24.10.0",
+    "@types/qrcode-terminal": "^0.12.2",
+    "prisma": "^6.19.0",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "prisma": {
+    "schema": "./prisma/schema.prisma"
+  }
+}
