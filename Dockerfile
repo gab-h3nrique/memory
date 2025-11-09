@@ -74,29 +74,39 @@
 # ──────────────── BUILD STAGE ────────────────
 FROM node:20-slim AS build
 
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-
 WORKDIR /app
 
+# evita o puppeteer baixar chromium no build
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+# instala OpenSSL para prisma
+RUN apt-get update && apt-get install -y openssl
+
+# copia package.json primeiro
 COPY package*.json ./
+
+# copia schema antes do npm install
+COPY prisma ./prisma
+
 RUN npm install
 
+# copia tudo
 COPY . .
+
 RUN npm run build
 
-
-# ──────────────── FINAL STAGE ────────────────
+# ----------------------------
+# FINAL
+# ----------------------------
 FROM node:20-slim
-
-ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 WORKDIR /app
 
-# Dependências necessárias pro Chromium funcionar
+# Chromium para o whatsapp-web.js
 RUN apt-get update && apt-get install -y \
   chromium \
   ca-certificates \
-  fonts-liberation \
+  openssl \
   libasound2 \
   libatk1.0-0 \
   libatk-bridge2.0-0 \
@@ -123,12 +133,16 @@ RUN apt-get update && apt-get install -y \
   --no-install-recommends && \
   rm -rf /var/lib/apt/lists/*
 
+# copia arquivos da build
 COPY --from=build /app/dist ./dist
 COPY package*.json ./
+COPY prisma ./prisma
+
 RUN npm install --omit=dev
 
-# Caminho para o WhatsApp-Web.js encontrar o Chromium
-ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
+# Chromium path para whatsapp-web.js
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 EXPOSE 3002
+
 CMD ["node", "dist/server.js"]
