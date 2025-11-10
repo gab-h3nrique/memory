@@ -123,7 +123,11 @@ function factory() {
           message: msg.body
         })
 
-        await fetch(account.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
+        const { account:loadedAccount } = CLIENTS.get(accountId)
+
+        if(!loadedAccount.webhookUrl) return
+
+        await fetch(loadedAccount.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
 
       })
 
