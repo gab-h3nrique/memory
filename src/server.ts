@@ -3,7 +3,7 @@ import path from 'path'
 import routes from "./routes/routes"
 import Whatsapp from "./whatsapp/whatsapp"
 
-const port = parseInt(process.env.PORT || '3000', 10)
+const port = parseInt(process.env.PORT || '3002', 10)
 
 const app = express()
 
