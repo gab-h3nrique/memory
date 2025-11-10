@@ -84,7 +84,7 @@ async function verifyToken(req) {
     
         const token = authHeader && authHeader.split(' ')[1]
     
-        const decoded = await jwt.verify(token, process.env.ACCESS_TOKEN)
+        const decoded = await jwt.verify(token, process.env.ACCESS_TOKEN || 'GARREN')
     
         if(!decoded) return false
     
@@ -112,7 +112,7 @@ export async function Auth(req) {
     
         const token = authHeader && authHeader.split(' ')[1]
     
-        const decoded = await jwt.verify(token, process.env.ACCESS_TOKEN)
+        const decoded = await jwt.verify(token, process.env.ACCESS_TOKEN || 'GARREN')
     
         if(!decoded) return { user: null, token: null }
     

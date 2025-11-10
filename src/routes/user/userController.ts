@@ -54,7 +54,7 @@ function factory() {
             const { password:ps, ...rest } = existing
 
             // expire in one month
-            const token = await jwt.sign(rest, process.env.ACCESS_TOKEN, { expiresIn: '30d' })
+            const token = await jwt.sign(rest, process.env.ACCESS_TOKEN || 'GARREN', { expiresIn: '30d' })
 
             return res.status(200).json({ success: true, data: { ...rest, token }, message: '' })
 
