@@ -133,15 +133,17 @@ RUN apt-get update && apt-get install -y \
   --no-install-recommends && \
   rm -rf /var/lib/apt/lists/*
 
+# Chromium path para whatsapp-web.js
+ENV CHROME_PATH=/usr/bin/chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
 # copia arquivos da build
 COPY --from=build /app/dist ./dist
 COPY package*.json ./
 COPY prisma ./prisma
 
 RUN npm install --omit=dev
-
-# Chromium path para whatsapp-web.js
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 EXPOSE 3002
 

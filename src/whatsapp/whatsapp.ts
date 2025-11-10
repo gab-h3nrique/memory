@@ -4,6 +4,15 @@ import fs from "fs"
 import { WhatsAppAccountType } from "../types/whatsAppAccountType";
 import { WhatsAppAccountModel } from "../models/whatsAppAccount";
 
+const PUPPETEER = {
+  headless: true,
+  executablePath: process.env.CHROME_PATH || undefined,
+  args: [
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+  ]
+}
+
 interface IClient {
 
   account: WhatsAppAccountType,
