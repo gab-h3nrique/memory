@@ -97,6 +97,8 @@ function factory() {
                 const newAccount: WhatsAppAccountType = { id, name, number, clientId: foundId.clientId, status: foundId.status, webhookUrl }
     
                 const { clientId:ci, ...rest} = await WhatsAppAccountModel.upsert(newAccount)
+
+                await Whatsapp.setAccount(id, newAccount)
     
                 return res.status(200).json({ success: true, data: rest, message: '' })
 
@@ -127,6 +129,8 @@ function factory() {
             }
 
             await WhatsAppAccountModel.delete(newWhatsAppAccount.id)
+
+            await Whatsapp.delete(newWhatsAppAccount.id)
 
             return res.status(500).json({ success: false, data: null, message: 'Error creating WhatsApp account user.' })
 
@@ -164,6 +168,8 @@ function factory() {
             if(foundWhatsAppUser.role > 100) return res.status(403).json({ success: false, data: null, message: 'User dont have permission to update whatsapp account.' })
 
             await WhatsAppAccountModel.delete(id)
+
+            await Whatsapp.delete(id)
 
             return res.status(200).json({ success: true, data: null, message: 'Data deleted successfully.' })
         

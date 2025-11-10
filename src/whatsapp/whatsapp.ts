@@ -46,6 +46,24 @@ function factory() {
 
     },
 
+    async delete(accountId: string) {
+
+      const instance = CLIENTS.get(accountId)
+
+      if(!instance) return
+
+      const { client, account } = instance
+
+      await client.destroy()
+
+      CLIENTS.delete(accountId)
+
+      const dir = `./wwebjs_auth/session-${account.clientId}`
+
+      if(fs.existsSync(dir)) fs.rmdirSync(dir, { recursive: true })
+
+    },
+
     async init(accountId: string) {
 
       const instance = CLIENTS.get(accountId)
@@ -152,6 +170,16 @@ function factory() {
     get clients() {
 
       return Array.from(CLIENTS.values())
+
+    },
+
+    setAccount(accountId: string, accounnt: WhatsAppAccountType) {
+
+      const instance = CLIENTS.get(accountId)
+
+      if(!instance) throw new Error("Client not found")
+
+      instance.account = accounnt
 
     },
 
