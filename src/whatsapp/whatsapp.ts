@@ -34,7 +34,7 @@ function factory() {
 
       if(!CLIENTS.has(account.id)) {
 
-        const client = new Client({ authStrategy: new LocalAuth({ clientId: account.clientId }), puppeteer: { headless: false } })
+        const client = new Client({ authStrategy: new LocalAuth({ clientId: account.clientId }), puppeteer: PUPPETEER })
   
         CLIENTS.set(account.id, { account, client })
 
