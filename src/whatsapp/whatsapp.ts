@@ -28,53 +28,39 @@ function factory() {
 
   return {
 
-    async create(account: WhatsAppAccountType) {
+    get clients() {
 
-      if(!account.clientId) throw new Error("Client ID is required")
-
-      if(!CLIENTS.has(account.id)) {
-
-        const client = new Client({ authStrategy: new LocalAuth({ clientId: account.clientId }), puppeteer: PUPPETEER })
-  
-        CLIENTS.set(account.id, { account, client })
-
-      }
-
-      await this.init(account.id)
-
-      return CLIENTS.get(account.id)!.client
+      return Array.from(CLIENTS.values())
 
     },
 
-    async delete(accountId: string) {
+    set clients(value: IClient[]) {
 
-      const instance = CLIENTS.get(accountId)
-
-      if(!instance) return
-
-      const { client, account } = instance
-
-      await client.destroy()
-
-      CLIENTS.delete(accountId)
-
-      const dir = `./wwebjs_auth/session-${account.clientId}`
-
-      if(fs.existsSync(dir)) fs.rmdirSync(dir, { recursive: true })
-
+      value.forEach(v => CLIENTS.set(v.account.id, v))
+      
     },
 
     async init(accountId: string) {
 
-      const instance = CLIENTS.get(accountId)
+      let instance = CLIENTS.get(accountId)
 
-      if(!instance) throw new Error("Client not found")
+      if(!instance) {
+
+        const accountFound = await WhatsAppAccountModel.find(accountId) as any
+
+        if(!accountFound) return null
+
+        const client = new Client({ authStrategy: new LocalAuth({ clientId: accountFound.clientId }), puppeteer: PUPPETEER })
+
+        CLIENTS.set(accountFound.id, { account: accountFound, client })
+
+        instance = { account: accountFound, client }
+
+      }
 
       const { account, client } = instance
 
-      if((client as any)._initialized) return
-
-      (client as any)._initialized = true
+      if((client as any)._initialized) return instance;
 
       client.on("qr", async qr => {
         
@@ -131,13 +117,131 @@ function factory() {
 
       })
 
-      await instance.client.initialize()
+      await instance.client.initialize();
+
+      (client as any)._initialized = true
+
+      return instance
 
     },
 
-    async qrCode(accountId: string) {
+    async initAll() {
+
+      const accounts = await WhatsAppAccountModel.query.findMany()
+
+      accounts.forEach(async account => {
+
+        // await this.create(account)
+        await this.init(account.id)
+
+      })
+
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // async create(account: WhatsAppAccountType) {
+
+    //   if(!account.clientId) throw new Error("Client ID is required")
+
+    //   if(!CLIENTS.has(account.id)) {
+
+    //     const client = new Client({ authStrategy: new LocalAuth({ clientId: account.clientId }), puppeteer: PUPPETEER })
+  
+    //     CLIENTS.set(account.id, { account, client })
+
+    //   }
+
+    //   await this.init(account.id)
+
+    //   return CLIENTS.get(account.id)!.client
+
+    // },
+
+    async delete(accountId: string) {
 
       const instance = CLIENTS.get(accountId)
+
+      if(!instance) return
+
+      const { client, account } = instance
+
+      await client.destroy()
+
+      CLIENTS.delete(accountId)
+
+      const dir = `./wwebjs_auth/session-${account.clientId}`
+
+      if(fs.existsSync(dir)) fs.rmdirSync(dir, { recursive: true })
+
+    },
+
+
+
+
+
+
+
+
+
+
+    async qrCode(accountId: string) {
+
+      const instance = await this.init(accountId)
+
+      // const instance = CLIENTS.get(accountId)
 
       if(!instance) throw new Error("Client not found")
 
@@ -158,34 +262,20 @@ function factory() {
       })
 
     },
+    
+    // setClient() {
 
-    async initAll() {
+    // },
 
-      const accounts = await WhatsAppAccountModel.query.findMany()
+    // setAccount(accountId: string, accounnt: WhatsAppAccountType) {
 
-      accounts.forEach(async account => {
+    //   const instance = CLIENTS.get(accountId)
 
-        await this.create(account)
+    //   if(!instance) throw new Error("Client not found")
 
-      })
+    //   instance.account = accounnt
 
-    },
-
-    get clients() {
-
-      return Array.from(CLIENTS.values())
-
-    },
-
-    setAccount(accountId: string, accounnt: WhatsAppAccountType) {
-
-      const instance = CLIENTS.get(accountId)
-
-      if(!instance) throw new Error("Client not found")
-
-      instance.account = accounnt
-
-    },
+    // },
 
     async send(accountId: string, number: string, message: string) {
 

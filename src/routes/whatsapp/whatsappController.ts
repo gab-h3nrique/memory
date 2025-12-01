@@ -98,7 +98,7 @@ function factory() {
     
                 const { clientId:ci, ...rest} = await WhatsAppAccountModel.upsert(newAccount)
 
-                await Whatsapp.setAccount(id, newAccount)
+                // await Whatsapp.setAccount(id, newAccount)
     
                 return res.status(200).json({ success: true, data: rest, message: '' })
 
@@ -122,7 +122,8 @@ function factory() {
 
             if(account) {
 
-                await Whatsapp.create({ ...newWhatsAppAccount, clientId: newCi } as any)
+                // await Whatsapp.create({ ...newWhatsAppAccount, clientId: newCi } as any)
+                await Whatsapp.init(newWhatsAppAccount.id)
 
                 return res.status(200).json({ success: true, data: newWhatsAppAccount, message: '' })
 
@@ -271,6 +272,7 @@ function factory() {
             const pngBuffer = await QRCode.toBuffer(qrText)
 
             res.setHeader("Content-Type", "image/png")
+            
             res.setHeader("Content-Length", pngBuffer.length)
 
             return res.status(200).end(pngBuffer)
