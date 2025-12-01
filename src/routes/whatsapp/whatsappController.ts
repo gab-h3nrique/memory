@@ -236,6 +236,8 @@ function factory() {
 
             const foundId = await WhatsAppAccountModel.find(account)
 
+            if(!foundId) return res.status(404).json({ success: false, data: null, message: 'WhatsApp account not found.' })
+
             const foundWhatsAppUser = await WhatsAppUserModel.query.findFirst({
 
                 where: {
