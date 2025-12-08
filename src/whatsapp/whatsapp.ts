@@ -3,6 +3,19 @@ import { Client, LocalAuth, Message } from "whatsapp-web.js"
 import fs from "fs"
 import { WhatsAppAccountType } from "../types/whatsAppAccountType";
 import { WhatsAppAccountModel } from "../models/whatsAppAccount";
+import { FailType } from "../types/failType";
+import { FailModel } from "../models/failModel";
+
+// window.WWebJS.getContact = async contactId => {
+//     const wid = window.Store.WidFactory.createWid(contactId);
+//     let contact = await window.Store.Contact.find(wid);
+//     if (contact.id._serialized.endsWith('@lid')) {
+//         contact.id = contact.phoneNumber;
+//     }
+//     const bizProfile = await window.Store.BusinessProfile.fetchBizProfile(wid);
+//     bizProfile.profileOptions && (contact.businessProfile = bizProfile);
+//     return window.WWebJS.getContactModel(contact);
+// };
 
 const PUPPETEER = {
   headless: true,
@@ -16,7 +29,9 @@ const PUPPETEER = {
 interface IClient {
 
   account: WhatsAppAccountType,
-  client: Client
+  client: Client,
+  initialized?: boolean
+  initializingPromise?: Promise<void> | null
 
 }
 
@@ -41,7 +56,7 @@ function factory() {
     },
 
     async init(accountId: string) {
-
+      
       let instance = CLIENTS.get(accountId)
 
       if(!instance) {
@@ -52,74 +67,117 @@ function factory() {
 
         const client = new Client({ authStrategy: new LocalAuth({ clientId: accountFound.clientId }), puppeteer: PUPPETEER })
 
-        CLIENTS.set(accountFound.id, { account: accountFound, client })
-
-        instance = { account: accountFound, client }
+        instance = { account: accountFound, client: client, initialized: false, initializingPromise: null }
+        
+        CLIENTS.set(accountFound.id, instance)
 
       }
 
-      const { account, client } = instance
+      const { account, client, initialized } = instance
 
-      if((client as any)._initialized) return instance;
+      if(initialized) return instance
 
-      client.on("qr", async qr => {
-        
-        let foundAccount = await WhatsAppAccountModel.find(account.id)
-        
-        if(!foundAccount) return
-        
-        foundAccount.status = "connected"
-        
-        await WhatsAppAccountModel.upsert(foundAccount as any)
+      if(instance.initializingPromise) {
 
-        // socket will emit qr code event
+        await instance.initializingPromise
 
-      })
+        return instance
 
-      client.on("ready", async() => {
+      }
 
-        let foundAccount = await WhatsAppAccountModel.find(account.id)
+      instance.initializingPromise = (async () => {
 
-        if(!foundAccount) return
-
-        foundAccount.status = "connected"
-
-        await WhatsAppAccountModel.upsert(foundAccount as any)
-
-      })
-
-      client.on("message", async (msg: Message) => {
-
-        if(msg.body.trim().toLowerCase() === "!!ping!!") return msg.reply("!!pong!!")
-
-        const contact = await msg.getContact()
-        
-        console.log('msg: ', msg)
-
-        console.log('contact: ', contact)
-
-        const name = contact.pushname || contact.name || "Desconhecido"
-
-        const payload = JSON.stringify( {
-          id: msg.id.id,
-          from: contact.number,
-          to: account.number,
-          name,
-          type: msg.type,
-          message: msg.body
+        client.on("qr", async qr => {
+          
+          let foundAccount = await WhatsAppAccountModel.find(account.id)
+          
+          if(!foundAccount) return
+          
+          foundAccount.status = "connected"
+          
+          await WhatsAppAccountModel.upsert(foundAccount as any)
+  
+          // socket will emit qr code event
+  
         })
+  
+        client.on("ready", async() => {
+  
+          let foundAccount = await WhatsAppAccountModel.find(account.id)
+  
+          if(!foundAccount) return
+  
+          foundAccount.status = "connected"
+  
+          await WhatsAppAccountModel.upsert(foundAccount as any)
+  
+        })
+  
+        client.on("message", async (msg: Message) => {
 
-        const { account:loadedAccount } = CLIENTS.get(accountId)
+          try {
 
-        if(!loadedAccount.webhookUrl) return
+            if(msg.body.trim().toLowerCase() === "!!ping!!") return msg.reply("!!pong!!")
+  
+            const contact = await msg.getContact()
 
-        await fetch(loadedAccount.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
+            const name = contact.pushname || contact.name || "Desconhecido"
 
-      })
+            const clientId = msg.from.split("@")[0]
+    
+            const payload = JSON.stringify( {
+              id: msg.id.id,
+              from: contact.number,
+              clientId: clientId,
+              to: account.number,
+              name,
+              type: msg.type,
+              message: msg.body
+            })
+    
+            const { account:loadedAccount } = CLIENTS.get(accountId)
+    
+            if(!loadedAccount.webhookUrl) return
+    
+            await fetch(loadedAccount.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload })
+            
+          } catch (error) {
 
-      await instance.client.initialize();
+            console.error("❌ Error handling incoming message:", error)
 
-      (client as any)._initialized = true
+            const formatedError = {
+              name: error.name || 'UnknownError',
+              message: error.message || 'An unknown error occurred.',
+              stack: error.stack || 'No stack trace available.',
+            }
+
+            const item: FailType = {
+              name: error.name,
+              type: 'message',
+              message: `Error processing message from ${msg.from}`,
+              data: msg,
+              error: formatedError,
+              status: 'new',
+            }
+
+            await FailModel.upsert(item)
+            
+          }
+  
+  
+        })
+  
+        console.log(`⌛ Initializing account ${account.id}`)
+  
+        await instance.client.initialize()
+
+        console.log(`✅ initialized accoun ${account.id}`)
+
+        instance!.initialized = true
+
+      })()
+
+      await instance.initializingPromise
 
       return instance
 
@@ -129,86 +187,20 @@ function factory() {
 
       const accounts = await WhatsAppAccountModel.query.findMany()
 
-      accounts.forEach(async account => {
+      for(const account of accounts) {
 
-        // await this.create(account)
         await this.init(account.id)
 
-      })
+      }
+
+      // accounts.forEach(async account => {
+
+      //   // await this.create(account)
+      //   await this.init(account.id)
+
+      // })
 
     },
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // async create(account: WhatsAppAccountType) {
-
-    //   if(!account.clientId) throw new Error("Client ID is required")
-
-    //   if(!CLIENTS.has(account.id)) {
-
-    //     const client = new Client({ authStrategy: new LocalAuth({ clientId: account.clientId }), puppeteer: PUPPETEER })
-  
-    //     CLIENTS.set(account.id, { account, client })
-
-    //   }
-
-    //   await this.init(account.id)
-
-    //   return CLIENTS.get(account.id)!.client
-
-    // },
 
     async delete(accountId: string) {
 
@@ -228,20 +220,9 @@ function factory() {
 
     },
 
-
-
-
-
-
-
-
-
-
     async qrCode(accountId: string) {
 
       const instance = await this.init(accountId)
-
-      // const instance = CLIENTS.get(accountId)
 
       if(!instance) throw new Error("Client not found")
 
@@ -249,7 +230,17 @@ function factory() {
 
       return new Promise((resolve, reject) => {
 
+        const timer = setTimeout(() => {
+
+          client.off("qr", onQR)
+
+          reject(new Error("QR timeout"))
+
+        }, 20000)
+
         function onQR(qr: string) {
+
+          clearTimeout(timer)
 
           client.off("qr", onQR) // remove listener after receiving QR code
 
@@ -262,20 +253,6 @@ function factory() {
       })
 
     },
-    
-    // setClient() {
-
-    // },
-
-    // setAccount(accountId: string, accounnt: WhatsAppAccountType) {
-
-    //   const instance = CLIENTS.get(accountId)
-
-    //   if(!instance) throw new Error("Client not found")
-
-    //   instance.account = accounnt
-
-    // },
 
     async send(accountId: string, number: string, message: string) {
 
