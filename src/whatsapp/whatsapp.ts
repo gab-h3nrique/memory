@@ -55,6 +55,18 @@ function factory() {
       
     },
 
+    async updateAccount(account: WhatsAppAccountType) {
+
+      let instance = CLIENTS.get(account.id)
+
+      if(!instance) return
+
+      instance.account = account
+
+      CLIENTS.set(account.id, instance)
+
+    },
+
     async init(accountId: string) {
       
       let instance = CLIENTS.get(accountId)
@@ -230,13 +242,15 @@ function factory() {
 
       return new Promise((resolve, reject) => {
 
+        const TIMER = 1000 * 60 * 2  // 2 minutes
+
         const timer = setTimeout(() => {
 
           client.off("qr", onQR)
 
           reject(new Error("QR timeout"))
 
-        }, 20000)
+        }, TIMER)
 
         function onQR(qr: string) {
 

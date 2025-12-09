@@ -99,6 +99,7 @@ function factory() {
                 const { clientId:ci, ...rest} = await WhatsAppAccountModel.upsert(newAccount)
 
                 // await Whatsapp.setAccount(id, newAccount)
+                Whatsapp.updateAccount(newAccount)
     
                 return res.status(200).json({ success: true, data: rest, message: '' })
 
